@@ -96,7 +96,7 @@ else:
             "ENGINE": "django.db.backends.postgresql",
             "NAME": config("DB_NAME", default="sales_ai_db"),
             "USER": config("DB_USER", default="postgres"),
-            "PASSWORD": config("DB_PASSWORD", default="yasir"),
+            "PASSWORD": config("DB_PASSWORD", default=""),
             "HOST": config("DB_HOST", default="127.0.0.1"),
             "PORT": config("DB_PORT", cast=int, default=5433),
         }
