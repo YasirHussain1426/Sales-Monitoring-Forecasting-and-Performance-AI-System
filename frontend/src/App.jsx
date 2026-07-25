@@ -1,28 +1,23 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import ProtectedRoute from "./components/ProtectedRoute";
+import DashboardPage from "./pages/DashboardPage";
+import LoginPage from "./pages/LoginPage";
 
 function App() {
-  const [message, setMessage] = useState("Loading...");
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    axios
-      .get("http://127.0.0.1:8000/api/v1/health/")
-      .then((response) => {
-        setMessage(JSON.stringify(response.data));
-      })
-      .catch((err) => {
-        console.error(err);
-        setError(err.message);
-      });
-  }, []);
-
   return (
-    <div style={{ padding: "2rem", color: "black", background: "white" }}>
-      <h1>Sales AI System</h1>
-      <p>{message}</p>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
