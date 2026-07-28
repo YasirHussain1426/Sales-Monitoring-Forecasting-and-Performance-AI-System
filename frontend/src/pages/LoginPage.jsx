@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser } from "../api/auth";
+import { Link } from "react-router-dom";
 
 function LoginPage() {
   const [username, setUsername] = useState("");
@@ -82,6 +83,9 @@ function LoginPage() {
           >
             {submitting ? "Signing in..." : "Sign in"}
           </button>
+          <p style={{ marginTop: "1rem" }}>
+          Don&apos;t have an account? <Link to="/signup">Sign up</Link>
+          </p>
         </form>
 
         {error && (
