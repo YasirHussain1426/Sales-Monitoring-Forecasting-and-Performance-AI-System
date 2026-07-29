@@ -39,7 +39,9 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'core',
-    'sales'
+    'sales',
+    'forecasting',
+    'targets',
 ]
 
 MIDDLEWARE = [
