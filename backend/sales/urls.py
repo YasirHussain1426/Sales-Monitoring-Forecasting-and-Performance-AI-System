@@ -16,7 +16,7 @@ from .views import (
 router = DefaultRouter()
 router.register("regions", RegionViewSet)
 router.register("products", ProductViewSet)
-router.register("customer", CustomerViewSet)
+router.register("customers", CustomerViewSet)
 router.register("salespeople", SalesPersonViewSet)
 router.register("transactions", SalesTransactionViewSet, basename="transactions")
 

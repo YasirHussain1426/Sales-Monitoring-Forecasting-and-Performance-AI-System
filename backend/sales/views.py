@@ -1,4 +1,8 @@
-
+import csv
+import io
+from decimal import Decimal
+from rest_framework.decorators import action
+from rest_framework import status
 from rest_framework import viewsets
 from datetime import datetime
 from rest_framework.exceptions import ValidationError
@@ -69,6 +73,57 @@ class SalesTransactionViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(salesperson_id=salesperson)
 
         return queryset.order_by("-transaction_date", "-id")
+
+    @action(detail=False, methods=["post"])
+    def upload_csv(self, request):
+        file = request.FILES.get("file")
+        if not file:
+            return Response(
+                {"detail": "No file provided."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Read and decode the uploaded CSV file
+            decoded_file = file.read().decode("utf-8")
+            reader = csv.DictReader(io.StringIO(decoded_file))
+            
+            transactions_to_create = []
+            for row in reader:
+                # Extract and cast values safely
+                qty = int(row["quantity"])
+                price = Decimal(row["unit_price"])
+                discount = Decimal(row.get("discount_amount", 0))
+                
+                # Calculate the exact total to ensure data consistency
+                total = (qty * price) - discount
+
+                transactions_to_create.append(
+                    SalesTransaction(
+                        transaction_date=row["transaction_date"],
+                        customer_id=row["customer_id"],
+                        product_id=row["product_id"],
+                        salesperson_id=row["salesperson_id"],
+                        quantity=qty,
+                        unit_price=price,
+                        discount_amount=discount,
+                        total_amount=total,
+                        notes=row.get("notes", "Bulk CSV Import")
+                    )
+                )
+            
+            # bulk_create saves all records in a single database query
+            SalesTransaction.objects.bulk_create(transactions_to_create)
+            
+            return Response(
+                {"detail": f"Successfully imported {len(transactions_to_create)} transactions."},
+                status=status.HTTP_201_CREATED
+            )
+        except Exception as e:
+            return Response(
+                {"detail": f"Error processing file. Ensure headers and data types are correct. Error: {str(e)}"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
     
 class SalesDashboardSummaryView(APIView):
     permission_classes = [IsAuthenticated]

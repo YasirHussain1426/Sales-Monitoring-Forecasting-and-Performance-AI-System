@@ -9,6 +9,43 @@ from sales.models import SalesTransaction
 from targets.models import SalesTarget
 
 
+SCOPE_CONFIG = {
+    "overall": {
+        "sales_filter_builder": lambda region_id=None, product_id=None, salesperson_id=None: {},
+        "target_filter_builder": lambda region_id=None, product_id=None, salesperson_id=None: {
+            "target_type": "overall"
+        },
+    },
+    "region": {
+        "sales_filter_builder": lambda region_id=None, product_id=None, salesperson_id=None: {
+            "salesperson__region_id": region_id
+        },
+        "target_filter_builder": lambda region_id=None, product_id=None, salesperson_id=None: {
+            "target_type": "region",
+            "region_id": region_id,
+        },
+    },
+    "product": {
+        "sales_filter_builder": lambda region_id=None, product_id=None, salesperson_id=None: {
+            "product_id": product_id
+        },
+        "target_filter_builder": lambda region_id=None, product_id=None, salesperson_id=None: {
+            "target_type": "product",
+            "product_id": product_id,
+        },
+    },
+    "salesperson": {
+        "sales_filter_builder": lambda region_id=None, product_id=None, salesperson_id=None: {
+            "salesperson_id": salesperson_id
+        },
+        "target_filter_builder": lambda region_id=None, product_id=None, salesperson_id=None: {
+            "target_type": "salesperson",
+            "salesperson_id": salesperson_id,
+        },
+    },
+}
+
+
 def _to_decimal(value) -> Decimal:
     return Decimal(str(value or 0))
 
@@ -24,8 +61,45 @@ def _month_bounds(anchor_date: date | None = None) -> tuple[date, date]:
     return start, end
 
 
-def _get_daily_sales_rows(date_from: date | None = None, date_to: date | None = None):
+def _validate_scope_inputs(scope_type, region_id=None, product_id=None, salesperson_id=None):
+    if scope_type not in SCOPE_CONFIG:
+        raise ValueError("scope_type must be one of: overall, region, product, salesperson")
+
+    if scope_type == "region" and not region_id:
+        raise ValueError("region_id is required when scope_type=region")
+    if scope_type == "product" and not product_id:
+        raise ValueError("product_id is required when scope_type=product")
+    if scope_type == "salesperson" and not salesperson_id:
+        raise ValueError("salesperson_id is required when scope_type=salesperson")
+
+
+def _build_sales_filters(scope_type, region_id=None, product_id=None, salesperson_id=None):
+    _validate_scope_inputs(scope_type, region_id, product_id, salesperson_id)
+    return SCOPE_CONFIG[scope_type]["sales_filter_builder"](
+        region_id=region_id,
+        product_id=product_id,
+        salesperson_id=salesperson_id,
+    )
+
+
+def _build_target_filters(scope_type, region_id=None, product_id=None, salesperson_id=None):
+    _validate_scope_inputs(scope_type, region_id, product_id, salesperson_id)
+    return SCOPE_CONFIG[scope_type]["target_filter_builder"](
+        region_id=region_id,
+        product_id=product_id,
+        salesperson_id=salesperson_id,
+    )
+
+
+def _get_daily_sales_rows(
+    date_from: date | None = None,
+    date_to: date | None = None,
+    sales_filters: dict | None = None,
+):
     queryset = SalesTransaction.objects.all()
+
+    if sales_filters:
+        queryset = queryset.filter(**sales_filters)
 
     if date_from:
         queryset = queryset.filter(transaction_date__gte=date_from)
@@ -39,20 +113,34 @@ def _get_daily_sales_rows(date_from: date | None = None, date_to: date | None = 
     )
 
 
-def _get_decimal_history(date_from: date | None = None, date_to: date | None = None):
-    rows = _get_daily_sales_rows(date_from=date_from, date_to=date_to)
+def _get_decimal_history(
+    date_from: date | None = None,
+    date_to: date | None = None,
+    sales_filters: dict | None = None,
+):
+    rows = _get_daily_sales_rows(
+        date_from=date_from,
+        date_to=date_to,
+        sales_filters=sales_filters,
+    )
     return [(row["transaction_date"], _to_decimal(row["total_sales"])) for row in rows]
 
 
-def get_daily_sales_history(date_from: date | None = None, date_to: date | None = None):
-    history = _get_decimal_history(date_from=date_from, date_to=date_to)
-    return [
-        {
-            "date": day.isoformat(),
-            "sales": _to_float(total_sales),
-        }
-        for day, total_sales in history
-    ]
+def get_daily_sales_history(
+    date_from: date | None = None,
+    date_to: date | None = None,
+    scope_type: str = "overall",
+    region_id: int | None = None,
+    product_id: int | None = None,
+    salesperson_id: int | None = None,
+):
+    sales_filters = _build_sales_filters(scope_type, region_id, product_id, salesperson_id)
+    history = _get_decimal_history(
+        date_from=date_from,
+        date_to=date_to,
+        sales_filters=sales_filters,
+    )
+    return [{"date": day.isoformat(), "sales": _to_float(total_sales)} for day, total_sales in history]
 
 
 def _simple_average(values: list[Decimal]) -> Decimal:
@@ -94,10 +182,7 @@ def _build_forecast_payload(
         )
 
     return {
-        "history": [
-            {"date": day.isoformat(), "sales": _to_float(total_sales)}
-            for day, total_sales in history
-        ],
+        "history": [{"date": day.isoformat(), "sales": _to_float(total_sales)} for day, total_sales in history],
         "forecast": forecast,
     }
 
@@ -106,8 +191,13 @@ def generate_moving_average_forecast(
     days: int = 7,
     window: int = 7,
     start_after: date | None = None,
+    scope_type: str = "overall",
+    region_id: int | None = None,
+    product_id: int | None = None,
+    salesperson_id: int | None = None,
 ):
-    history = _get_decimal_history()
+    sales_filters = _build_sales_filters(scope_type, region_id, product_id, salesperson_id)
+    history = _get_decimal_history(sales_filters=sales_filters)
     if not history:
         return {"history": [], "forecast": []}
 
@@ -126,8 +216,13 @@ def generate_weighted_moving_average_forecast(
     days: int = 7,
     window: int = 7,
     start_after: date | None = None,
+    scope_type: str = "overall",
+    region_id: int | None = None,
+    product_id: int | None = None,
+    salesperson_id: int | None = None,
 ):
-    history = _get_decimal_history()
+    sales_filters = _build_sales_filters(scope_type, region_id, product_id, salesperson_id)
+    history = _get_decimal_history(sales_filters=sales_filters)
     if not history:
         return {"history": [], "forecast": []}
 
@@ -142,8 +237,18 @@ def generate_weighted_moving_average_forecast(
     )
 
 
-def get_forecast_vs_actual(compare_days: int = 30, window: int = 7, method: str = "weighted"):
-    history = _get_decimal_history()
+def get_forecast_vs_actual(
+    compare_days: int = 30,
+    window: int = 7,
+    method: str = "weighted",
+    scope_type: str = "overall",
+    region_id: int | None = None,
+    product_id: int | None = None,
+    salesperson_id: int | None = None,
+):
+    sales_filters = _build_sales_filters(scope_type, region_id, product_id, salesperson_id)
+    history = _get_decimal_history(sales_filters=sales_filters)
+
     if len(history) <= window:
         return {
             "summary": {
@@ -151,6 +256,7 @@ def get_forecast_vs_actual(compare_days: int = 30, window: int = 7, method: str 
                 "bias": "neutral",
                 "compared_points": 0,
                 "method": method,
+                "scope_type": scope_type,
             },
             "series": [],
         }
@@ -159,11 +265,7 @@ def get_forecast_vs_actual(compare_days: int = 30, window: int = 7, method: str 
 
     for index in range(window, len(history)):
         prior_values = [sales for _, sales in history[index - window:index]]
-
-        if method == "moving_average":
-            predicted_value = _simple_average(prior_values)
-        else:
-            predicted_value = _weighted_average(prior_values)
+        predicted_value = _simple_average(prior_values) if method == "moving_average" else _weighted_average(prior_values)
 
         actual_date, actual_value = history[index]
         error = actual_value - predicted_value
@@ -178,11 +280,9 @@ def get_forecast_vs_actual(compare_days: int = 30, window: int = 7, method: str 
         )
 
     comparisons = comparisons[-compare_days:]
-
     actual_sum = sum((item["actual_value"] for item in comparisons), Decimal("0"))
     abs_error_sum = sum((abs(item["error"]) for item in comparisons), Decimal("0"))
     signed_error_sum = sum((item["error"] for item in comparisons), Decimal("0"))
-
     wape = Decimal("0") if actual_sum == 0 else abs_error_sum / actual_sum
 
     if signed_error_sum > 0:
@@ -198,6 +298,7 @@ def get_forecast_vs_actual(compare_days: int = 30, window: int = 7, method: str 
             "bias": bias,
             "compared_points": len(comparisons),
             "method": method,
+            "scope_type": scope_type,
         },
         "series": [
             {
@@ -221,27 +322,48 @@ def _get_risk_status(attainment_pct: Decimal) -> str:
     return "ahead"
 
 
-def _get_active_overall_target(anchor_date: date | None = None):
+def _get_active_target(
+    scope_type: str = "overall",
+    region_id: int | None = None,
+    product_id: int | None = None,
+    salesperson_id: int | None = None,
+    anchor_date: date | None = None,
+):
     current_date = anchor_date or timezone.localdate()
+    target_filters = _build_target_filters(scope_type, region_id, product_id, salesperson_id)
+
     return (
         SalesTarget.objects.filter(
-            target_type="overall",
             period_start__lte=current_date,
             period_end__gte=current_date,
+            **target_filters,
         )
         .order_by("-period_start")
         .first()
     )
 
 
-def get_forecast_vs_target(window: int = 7, method: str = "weighted"):
+def get_forecast_vs_target(
+    window: int = 7,
+    method: str = "weighted",
+    scope_type: str = "overall",
+    region_id: int | None = None,
+    product_id: int | None = None,
+    salesperson_id: int | None = None,
+):
     today = timezone.localdate()
-    target = _get_active_overall_target(today)
+    target = _get_active_target(
+        scope_type=scope_type,
+        region_id=region_id,
+        product_id=product_id,
+        salesperson_id=salesperson_id,
+        anchor_date=today,
+    )
 
     if not target:
-        return {
-            "detail": "No active overall sales target found for the current date."
-        }
+        return {"detail": f"No active {scope_type} sales target found for the current date."}
+
+    sales_filters = _build_sales_filters(scope_type, region_id, product_id, salesperson_id)
 
     actual_end = min(today, target.period_end)
     actual_history = []
@@ -250,10 +372,10 @@ def get_forecast_vs_target(window: int = 7, method: str = "weighted"):
         actual_history = _get_decimal_history(
             date_from=target.period_start,
             date_to=actual_end,
+            sales_filters=sales_filters,
         )
 
     actual_to_date = sum((sales for _, sales in actual_history), Decimal("0"))
-
     forecast_remaining = Decimal("0")
     remaining_days = 0
 
@@ -265,12 +387,20 @@ def get_forecast_vs_target(window: int = 7, method: str = "weighted"):
                 days=remaining_days,
                 window=window,
                 start_after=today,
+                scope_type=scope_type,
+                region_id=region_id,
+                product_id=product_id,
+                salesperson_id=salesperson_id,
             )
         else:
             forecast_payload = generate_weighted_moving_average_forecast(
                 days=remaining_days,
                 window=window,
                 start_after=today,
+                scope_type=scope_type,
+                region_id=region_id,
+                product_id=product_id,
+                salesperson_id=salesperson_id,
             )
 
         forecast_remaining = sum(
@@ -281,20 +411,11 @@ def get_forecast_vs_target(window: int = 7, method: str = "weighted"):
     target_amount_decimal = _to_decimal(target.target_amount)
     projected_total = actual_to_date + forecast_remaining
     variance_amount = projected_total - target_amount_decimal
-
-    attainment_pct = (
-        Decimal("0")
-        if target_amount_decimal == 0
-        else (projected_total / target_amount_decimal) * Decimal("100")
-    )
-
-    current_month_start, current_month_end = _month_bounds(today)
+    attainment_pct = Decimal("0") if target_amount_decimal == 0 else (projected_total / target_amount_decimal) * Decimal("100")
 
     return {
         "period_start": target.period_start.isoformat(),
         "period_end": target.period_end.isoformat(),
-        "current_month_start": current_month_start.isoformat(),
-        "current_month_end": current_month_end.isoformat(),
         "actual_to_date": _to_float(actual_to_date),
         "forecast_remaining": _to_float(forecast_remaining),
         "projected_total": _to_float(projected_total),
@@ -306,4 +427,8 @@ def get_forecast_vs_target(window: int = 7, method: str = "weighted"):
         "remaining_days": remaining_days,
         "target_id": target.id,
         "target_type": target.target_type,
+        "scope_type": scope_type,
+        "region_id": region_id,
+        "product_id": product_id,
+        "salesperson_id": salesperson_id,
     }

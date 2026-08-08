@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'sales',
     'forecasting',
     'targets',
+    'alerts',
 ]
 
 MIDDLEWARE = [
