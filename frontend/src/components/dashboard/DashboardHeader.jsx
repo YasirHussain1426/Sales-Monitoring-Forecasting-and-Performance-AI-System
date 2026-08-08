@@ -1,19 +1,21 @@
+import { Link } from "react-router-dom";
+
 function DashboardHeader({ currentUser, onLogout }) {
   return (
     <div
+      className="glass-card section-card fade-up"
       style={{
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        marginBottom: "1.5rem",
         gap: "1rem",
         flexWrap: "wrap",
       }}
     >
       <div>
-        <h1 style={{ margin: 0 }}>Sales AI System</h1>
-        <p style={{ margin: "0.5rem 0", color: "#555" }}>
-          Resume project: Django + DRF + React + PostgreSQL
+        <h1 className="page-title">Sales AI System</h1>
+        <p className="page-subtitle">
+          Sales monitoring, forecasting, and alert intelligence
         </p>
 
         {currentUser && (
@@ -23,20 +25,20 @@ function DashboardHeader({ currentUser, onLogout }) {
               alignItems: "center",
               gap: "0.5rem",
               flexWrap: "wrap",
+              marginTop: "0.75rem",
             }}
           >
-            <span style={{ color: "#555" }}>
-              Signed in as <strong>{currentUser.username}</strong>
+            <span style={{ color: "var(--muted)" }}>
+              Signed in as <strong style={{ color: "var(--text)" }}>{currentUser.username}</strong>
             </span>
 
             <span
+              className="badge"
               style={{
-                padding: "4px 10px",
-                borderRadius: "999px",
-                fontSize: "12px",
-                fontWeight: "bold",
-                backgroundColor: currentUser.is_superuser ? "#fee2e2" : "#dbeafe",
-                color: currentUser.is_superuser ? "#991b1b" : "#1d4ed8",
+                backgroundColor: currentUser.is_superuser
+                  ? "rgba(239, 68, 68, 0.18)"
+                  : "rgba(59, 130, 246, 0.18)",
+                color: currentUser.is_superuser ? "#fecaca" : "#bfdbfe",
               }}
             >
               {currentUser.is_superuser ? "Admin" : "User"}
@@ -45,7 +47,39 @@ function DashboardHeader({ currentUser, onLogout }) {
         )}
       </div>
 
-      <button onClick={onLogout}>Logout</button>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.75rem",
+          flexWrap: "wrap",
+        }}
+      >
+        <Link
+          to="/data-entry"
+          style={{
+            textDecoration: "none",
+            padding: "8px 12px",
+            borderRadius: "8px",
+            backgroundColor: "#16a34a", 
+            color: "#fff",
+            fontWeight: 500,
+          }}
+        >
+          Data Entry
+        </Link>
+        <Link to="/forecast-comparison" className="action-link action-blue">
+          Forecast Comparison
+        </Link>
+        <Link to="/forecast-actual" className="action-link action-violet">
+          Forecast vs Actual
+        </Link>
+        <Link to="/alerts" className="action-link action-red">
+          Alerts
+        </Link>
+
+        <button onClick={onLogout}>Logout</button>
+      </div>
     </div>
   );
 }

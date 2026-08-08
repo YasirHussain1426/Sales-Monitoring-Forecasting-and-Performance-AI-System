@@ -64,3 +64,42 @@ export const getTransactions = async ({
 
   return response.data;
 };
+
+export const getDailyForecast = async (days = 7) => {
+  const response = await apiClient.get("forecasting/daily/", {
+    params: { days },
+  });
+  return response.data;
+};
+
+export const getSalesPeople = async () => {
+  const response = await apiClient.get("sales/salespeople/");
+  return response.data;
+};
+
+export const getCustomers = async () => {
+  const response = await apiClient.get("sales/customers/");
+  return response.data;
+};
+
+export const getSalespeople = async () => {
+  const response = await apiClient.get("sales/salespeople/");
+  return response.data;
+};
+
+export const createTransaction = async (data) => {
+  const response = await apiClient.post("sales/transactions/", data);
+  return response.data;
+};
+
+export const uploadTransactionsCSV = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  
+  const response = await apiClient.post("sales/transactions/upload_csv/", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return response.data;
+};

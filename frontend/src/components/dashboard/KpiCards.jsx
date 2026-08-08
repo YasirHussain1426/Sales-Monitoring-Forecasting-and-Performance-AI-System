@@ -7,28 +7,16 @@ function KpiCards({ summary }) {
   ];
 
   return (
-    <section style={{ marginBottom: "2rem" }}>
-      <h2>Dashboard Summary</h2>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: "1rem",
-        }}
-      >
+    <section className="fade-up stagger-1" style={{ marginBottom: "2rem" }}>
+      <h2 className="section-title">Dashboard Summary</h2>
+      <div className="kpi-grid">
         {cards.map((card) => (
           <div
             key={card.label}
-            style={{
-              border: "1px solid #ddd",
-              borderRadius: "12px",
-              padding: "1rem",
-              backgroundColor: "#fff",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-            }}
+            className="glass-card card-3d kpi-card"
           >
-            <p style={{ margin: 0, color: "#666", fontSize: "14px" }}>{card.label}</p>
-            <h3 style={{ margin: "0.5rem 0 0 0" }}>{card.value}</h3>
+            <p className="kpi-label">{card.label}</p>
+            <h3 className="kpi-value">{card.value}</h3>
           </div>
         ))}
       </div>

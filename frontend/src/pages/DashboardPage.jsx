@@ -8,11 +8,13 @@ import {
   getSalesByRegion,
   getTopProducts,
   getTransactions,
+  getDailyForecast,
 } from "../api/sales";
 import { getCurrentUser, logoutUser } from "../api/auth";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
 import FilterBar from "../components/dashboard/FilterBar";
 import KpiCards from "../components/dashboard/KpiCards";
+import ForecastChart from "../components/dashboard/ForecastChart";
 import SalesTrendChart from "../components/dashboard/SalesTrendChart";
 import SalesByRegionChart from "../components/dashboard/SalesByRegionChart";
 import TopProductsChart from "../components/dashboard/TopProductsChart";
@@ -25,6 +27,7 @@ function DashboardPage() {
   const [authLoading, setAuthLoading] = useState(true);
 
   const [summary, setSummary] = useState(null);
+  const [forecastData, setForecastData] = useState(null);
   const [trends, setTrends] = useState([]);
   const [regions, setRegions] = useState([]);
   const [products, setProducts] = useState([]);
@@ -64,6 +67,7 @@ function DashboardPage() {
         regionSalesData,
         topProductsData,
         transactionsData,
+        forecastResponse,
       ] = await Promise.all([
         getDashboardSummary(selectedStartDate, selectedEndDate),
         getDashboardTrends(selectedStartDate, selectedEndDate),
@@ -78,9 +82,11 @@ function DashboardPage() {
           product: selectedProductId,
           page,
         }),
+        getDailyForecast(7),
       ]);
 
       setSummary(summaryData);
+      setForecastData(forecastResponse);
       setTrends(trendsData);
       setRegions(regionsData.results || regionsData);
       setProducts(productsData.results || productsData);
@@ -151,51 +157,63 @@ function DashboardPage() {
   };
 
   if (authLoading) {
-    return (
-      <div style={{ padding: "2rem", fontFamily: "Arial, sans-serif" }}>
-        Checking session...
-      </div>
-    );
+    return <div className="page-shell">Checking session...</div>;
   }
 
   return (
-    <div style={{ padding: "2rem", fontFamily: "Arial, sans-serif" }}>
+    <div className="page-shell">
       <DashboardHeader currentUser={currentUser} onLogout={handleLogout} />
 
-      <FilterBar
-        startDate={startDate}
-        endDate={endDate}
-        selectedRegion={selectedRegion}
-        selectedProduct={selectedProduct}
-        regions={regions}
-        products={products}
-        onStartDateChange={setStartDate}
-        onEndDateChange={setEndDate}
-        onRegionChange={setSelectedRegion}
-        onProductChange={setSelectedProduct}
-        onApplyFilters={handleApplyFilters}
-      />
+      <div className="glass-card section-card fade-up stagger-1">
+        <FilterBar
+          startDate={startDate}
+          endDate={endDate}
+          selectedRegion={selectedRegion}
+          selectedProduct={selectedProduct}
+          regions={regions}
+          products={products}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+          onRegionChange={setSelectedRegion}
+          onProductChange={setSelectedProduct}
+          onApplyFilters={handleApplyFilters}
+        />
+      </div>
 
       {loading && <p>Loading data...</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {error && <p style={{ color: "#fca5a5" }}>{error}</p>}
 
       {!loading && !error && (
         <>
           <KpiCards summary={summary} />
 
-          <SalesTrendChart trends={trends} />
-          <SalesByRegionChart salesByRegion={salesByRegion} />
-          <TopProductsChart topProducts={topProducts} />
+          <div className="glass-card section-card fade-up stagger-1">
+            <ForecastChart forecastData={forecastData} />
+          </div>
 
-          <TransactionsTable
-            transactions={transactions}
-            transactionCount={transactionCount}
-            currentPage={currentPage}
-            hasNextPage={!!nextPageUrl}
-            hasPreviousPage={!!previousPageUrl}
-            onNextPage={handleNextPage}
-            onPreviousPage={handlePreviousPage}
-          />
+          <div className="glass-card section-card fade-up stagger-2">
+            <SalesTrendChart trends={trends} />
+          </div>
+
+          <div className="glass-card section-card fade-up stagger-2">
+            <SalesByRegionChart salesByRegion={salesByRegion} />
+          </div>
+
+          <div className="glass-card section-card fade-up stagger-3">
+            <TopProductsChart topProducts={topProducts} />
+          </div>
+
+          <div className="glass-card section-card fade-up stagger-3">
+            <TransactionsTable
+              transactions={transactions}
+              transactionCount={transactionCount}
+              currentPage={currentPage}
+              hasNextPage={!!nextPageUrl}
+              hasPreviousPage={!!previousPageUrl}
+              onNextPage={handleNextPage}
+              onPreviousPage={handlePreviousPage}
+            />
+          </div>
         </>
       )}
     </div>

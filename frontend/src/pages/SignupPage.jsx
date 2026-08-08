@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { registerUser } from "../api/auth";
 
 function SignupPage() {
@@ -14,21 +14,21 @@ function SignupPage() {
 
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
+  const handleChange = (event) => {
+    setFormData((previous) => ({
+      ...previous,
+      [event.target.name]: event.target.value,
     }));
   };
 
-  const handleSignup = async (e) => {
-    e.preventDefault();
+  const handleSignup = async (event) => {
+    event.preventDefault();
+
     try {
       setSubmitting(true);
       setError("");
 
       const data = await registerUser(formData);
-
       localStorage.setItem("access_token", data.access);
       localStorage.setItem("refresh_token", data.refresh);
 
@@ -46,60 +46,84 @@ function SignupPage() {
   };
 
   return (
-    <div style={{ padding: "2rem", fontFamily: "Arial, sans-serif" }}>
-      <h1>Sign Up</h1>
-
-      <form onSubmit={handleSignup}>
-        <div style={{ marginBottom: "1rem" }}>
-          <input
-            name="username"
-            type="text"
-            placeholder="Username"
-            value={formData.username}
-            onChange={handleChange}
-          />
+    <div className="page-shell auth-shell">
+      <div className="glass-card auth-card fade-up">
+        <div style={{ marginBottom: "1.5rem", textAlign: "center" }}>
+          <h1 className="page-title">Create Account</h1>
+          <p className="page-subtitle">Start using the sales monitoring and forecasting platform</p>
         </div>
 
-        <div style={{ marginBottom: "1rem" }}>
-          <input
-            name="email"
-            type="email"
-            placeholder="Email"
-            value={formData.email}
-            onChange={handleChange}
-          />
-        </div>
+        <form onSubmit={handleSignup} className="auth-form">
+          <div className="auth-field">
+            <label htmlFor="username" className="auth-label">Username</label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              placeholder="Choose a username"
+              value={formData.username}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-        <div style={{ marginBottom: "1rem" }}>
-          <input
-            name="password"
-            type="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-          />
-        </div>
+          <div className="auth-field">
+            <label htmlFor="email" className="auth-label">Email</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="Enter your email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-        <div style={{ marginBottom: "1rem" }}>
-          <input
-            name="confirm_password"
-            type="password"
-            placeholder="Confirm Password"
-            value={formData.confirm_password}
-            onChange={handleChange}
-          />
-        </div>
+          <div className="auth-field">
+            <label htmlFor="password" className="auth-label">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              placeholder="Create a password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Creating account..." : "Sign Up"}
-        </button>
-      </form>
+          <div className="auth-field">
+            <label htmlFor="confirm_password" className="auth-label">Confirm Password</label>
+            <input
+              id="confirm_password"
+              name="confirm_password"
+              type="password"
+              placeholder="Confirm your password"
+              value={formData.confirm_password}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="primary-button"
+          >
+            {submitting ? "Creating account..." : "Sign Up"}
+          </button>
+        </form>
 
-      <p style={{ marginTop: "1rem" }}>
-        Already have an account? <Link to="/login">Login</Link>
-      </p>
+        {error && <div className="auth-error">{error}</div>}
+
+        <p className="auth-footer">
+          Already have an account?{" "}
+          <Link to="/login" className="auth-link">
+            Login
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }

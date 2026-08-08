@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { loginUser } from "../api/auth";
-import { Link } from "react-router-dom";
 
 function LoginPage() {
   const [username, setUsername] = useState("");
@@ -17,8 +16,9 @@ function LoginPage() {
     }
   }, [navigate]);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleLogin = async (event) => {
+    event.preventDefault();
+
     try {
       setSubmitting(true);
       setError("");
@@ -37,62 +37,55 @@ function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 sm:px-6 lg:px-8 font-sans">
-      <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg border border-gray-100">
-        
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900">Welcome back</h2>
-          <p className="mt-2 text-sm text-gray-600">Please sign in to your account</p>
+    <div className="page-shell auth-shell">
+      <div className="glass-card auth-card fade-up">
+        <div style={{ marginBottom: "1.5rem", textAlign: "center" }}>
+          <h1 className="page-title">Welcome Back</h1>
+          <p className="page-subtitle">Sign in to access your sales intelligence dashboard</p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-              Username
-            </label>
+        <form onSubmit={handleLogin} className="auth-form">
+          <div className="auth-field">
+            <label htmlFor="username" className="auth-label">Username</label>
             <input
               id="username"
               type="text"
               required
               placeholder="Enter your username"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+              onChange={(event) => setUsername(event.target.value)}
             />
           </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
+          <div className="auth-field">
+            <label htmlFor="password" className="auth-label">Password</label>
             <input
               id="password"
               type="password"
               required
               placeholder="••••••••"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+              onChange={(event) => setPassword(event.target.value)}
             />
           </div>
 
           <button
             type="submit"
             disabled={submitting}
-            className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+            className="primary-button"
           >
-            {submitting ? "Signing in..." : "Sign in"}
+            {submitting ? "Signing in..." : "Sign In"}
           </button>
-          <p style={{ marginTop: "1rem" }}>
-          Don&apos;t have an account? <Link to="/signup">Sign up</Link>
-          </p>
         </form>
 
-        {error && (
-          <div className="mt-6 p-3 bg-red-50 border border-red-100 rounded-md">
-            <p className="text-sm text-red-600 text-center font-medium">{error}</p>
-          </div>
-        )}
+        {error && <div className="auth-error">{error}</div>}
+
+        <p className="auth-footer">
+          Don&apos;t have an account?{" "}
+          <Link to="/signup" className="auth-link">
+            Sign up
+          </Link>
+        </p>
       </div>
     </div>
   );
