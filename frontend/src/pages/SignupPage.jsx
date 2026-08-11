@@ -2,6 +2,26 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registerUser } from "../api/auth";
 
+function formatSignupError(errorData) {
+  if (!errorData) return "Signup failed.";
+
+  if (typeof errorData === "string") return errorData;
+
+  const messages = [];
+
+  Object.entries(errorData).forEach(([field, value]) => {
+    if (Array.isArray(value)) {
+      messages.push(`${field}: ${value.join(" ")}`);
+    } else if (typeof value === "string") {
+      messages.push(`${field}: ${value}`);
+    } else {
+      messages.push(`${field}: ${JSON.stringify(value)}`);
+    }
+  });
+
+  return messages.join(" | ");
+}
+
 function SignupPage() {
   const [formData, setFormData] = useState({
     username: "",
@@ -11,117 +31,105 @@ function SignupPage() {
   });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
   const navigate = useNavigate();
 
   const handleChange = (event) => {
+    const { name, value } = event.target;
     setFormData((previous) => ({
       ...previous,
-      [event.target.name]: event.target.value,
+      [name]: value,
     }));
   };
 
   const handleSignup = async (event) => {
     event.preventDefault();
+    setSubmitting(true);
+    setError("");
 
     try {
-      setSubmitting(true);
-      setError("");
-
       const data = await registerUser(formData);
       localStorage.setItem("access_token", data.access);
       localStorage.setItem("refresh_token", data.refresh);
-
       navigate("/", { replace: true });
-    } catch (err) {
-      console.error(err);
-      setError(
-        err.response?.data
-          ? JSON.stringify(err.response.data)
-          : "Signup failed."
-      );
+    } catch (signupError) {
+      console.error(signupError);
+      setError(formatSignupError(signupError.response?.data));
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="page-shell auth-shell">
-      <div className="glass-card auth-card fade-up">
-        <div style={{ marginBottom: "1.5rem", textAlign: "center" }}>
-          <h1 className="page-title">Create Account</h1>
-          <p className="page-subtitle">Start using the sales monitoring and forecasting platform</p>
-        </div>
+    <div className="auth-shell">
+      <div className="glass-card auth-card">
+        <p className="eyebrow">Create account</p>
+        <h1 className="page-title">Join Sales AI</h1>
+        <p className="page-subtitle">Create a free account to test the app.</p>
 
-        <form onSubmit={handleSignup} className="auth-form">
-          <div className="auth-field">
-            <label htmlFor="username" className="auth-label">Username</label>
+        <form className="form-stack" onSubmit={handleSignup}>
+          <label className="field">
+            <span className="field-label">Username</span>
             <input
-              id="username"
+              className="text-input"
               name="username"
               type="text"
-              placeholder="Choose a username"
               value={formData.username}
               onChange={handleChange}
               required
             />
-          </div>
+          </label>
 
-          <div className="auth-field">
-            <label htmlFor="email" className="auth-label">Email</label>
+          <label className="field">
+            <span className="field-label">Email</span>
             <input
-              id="email"
+              className="text-input"
               name="email"
               type="email"
-              placeholder="Enter your email"
               value={formData.email}
               onChange={handleChange}
               required
             />
-          </div>
+          </label>
 
-          <div className="auth-field">
-            <label htmlFor="password" className="auth-label">Password</label>
+          <label className="field">
+            <span className="field-label">Password</span>
             <input
-              id="password"
+              className="text-input"
               name="password"
               type="password"
-              placeholder="Create a password"
               value={formData.password}
               onChange={handleChange}
+              minLength={8}
+              pattern="^(?=.*[A-Z])(?=.*\\d)(?=.*[^\\w\\s]).{8,}$"
+              title="Password must be at least 8 characters long and include one uppercase letter, one number, and one special character."
               required
             />
-          </div>
+            <span className="field-hint">
+              Password must be 8+ characters with 1 uppercase letter, numbers, and 1 special character.
+            </span>
+          </label>
 
-          <div className="auth-field">
-            <label htmlFor="confirm_password" className="auth-label">Confirm Password</label>
+          <label className="field">
+            <span className="field-label">Confirm Password</span>
             <input
-              id="confirm_password"
+              className="text-input"
               name="confirm_password"
               type="password"
-              placeholder="Confirm your password"
               value={formData.confirm_password}
               onChange={handleChange}
               required
             />
-          </div>
+          </label>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="primary-button"
-          >
-            {submitting ? "Creating account..." : "Sign Up"}
+          {error && <div className="status-banner status-error">{error}</div>}
+
+          <button className="button button-primary" type="submit" disabled={submitting}>
+            {submitting ? "Creating account..." : "Sign up"}
           </button>
         </form>
 
-        {error && <div className="auth-error">{error}</div>}
-
         <p className="auth-footer">
-          Already have an account?{" "}
-          <Link to="/login" className="auth-link">
-            Login
-          </Link>
+          Already have an account? <Link to="/login">Login</Link>
         </p>
       </div>
     </div>

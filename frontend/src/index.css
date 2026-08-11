@@ -303,6 +303,12 @@ input::placeholder {
   transform: none;
 }
 
+.field-hint {
+  font-size: 0.82rem;
+  color: var(--text-soft);
+  line-height: 1.4;
+}
+
 /* === Form Visibility Fixes === */
 label,
 .auth-label {
