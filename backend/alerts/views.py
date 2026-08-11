@@ -1,4 +1,4 @@
-from rest_framework.permissions import IsAuthenticated
+from core.permissions import IsCompanyAdmin
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
@@ -8,7 +8,7 @@ from .services import run_all_alert_rules
 
 
 class AlertListView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsCompanyAdmin]
 
     def get(self, request):
         queryset = Alert.objects.select_related(
@@ -51,7 +51,7 @@ class AlertListView(APIView):
 
 
 class RunAlertRulesView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsCompanyAdmin]
 
     def post(self, request):
         method = request.data.get("method", "weighted")
@@ -67,7 +67,7 @@ class RunAlertRulesView(APIView):
 
 
 class ResolveAlertView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsCompanyAdmin]
 
     def post(self, request, alert_id):
         alert = get_object_or_404(Alert, id=alert_id)

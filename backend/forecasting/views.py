@@ -1,7 +1,9 @@
-from rest_framework.permissions import IsAuthenticated
+from decimal import Decimal, InvalidOperation
+
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.permissions import IsAuthenticatedReadOnlyOrCompanyAdmin
 from .services import (
     generate_moving_average_forecast,
     generate_weighted_moving_average_forecast,
@@ -10,89 +12,63 @@ from .services import (
 )
 
 
-def _optional_int(value):
-    if value in (None, "", "null"):
-        return None
-    return int(value)
-
-
 class DailySalesForecastView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticatedReadOnlyOrCompanyAdmin]
 
     def get(self, request):
         days = int(request.GET.get("days", 7))
         window = int(request.GET.get("window", 7))
         method = request.GET.get("method", "weighted")
-        scope_type = request.GET.get("scope_type", "overall")
-        region_id = _optional_int(request.GET.get("region_id"))
-        product_id = _optional_int(request.GET.get("product_id"))
-        salesperson_id = _optional_int(request.GET.get("salesperson_id"))
 
         if method == "moving_average":
-            data = generate_moving_average_forecast(
-                days=days,
-                window=window,
-                scope_type=scope_type,
-                region_id=region_id,
-                product_id=product_id,
-                salesperson_id=salesperson_id,
-            )
+            data = generate_moving_average_forecast(days=days, window=window)
         else:
-            data = generate_weighted_moving_average_forecast(
-                days=days,
-                window=window,
-                scope_type=scope_type,
-                region_id=region_id,
-                product_id=product_id,
-                salesperson_id=salesperson_id,
-            )
+            data = generate_weighted_moving_average_forecast(days=days, window=window)
 
         return Response(data)
 
 
 class ForecastVsActualView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticatedReadOnlyOrCompanyAdmin]
 
     def get(self, request):
         compare_days = int(request.GET.get("compare_days", 30))
         window = int(request.GET.get("window", 7))
         method = request.GET.get("method", "weighted")
-        scope_type = request.GET.get("scope_type", "overall")
-        region_id = _optional_int(request.GET.get("region_id"))
-        product_id = _optional_int(request.GET.get("product_id"))
-        salesperson_id = _optional_int(request.GET.get("salesperson_id"))
 
         data = get_forecast_vs_actual(
             compare_days=compare_days,
             window=window,
             method=method,
-            scope_type=scope_type,
-            region_id=region_id,
-            product_id=product_id,
-            salesperson_id=salesperson_id,
         )
         return Response(data)
 
 
 class ForecastVsTargetView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticatedReadOnlyOrCompanyAdmin]
 
     def get(self, request):
+        target_amount_raw = request.GET.get("target_amount")
+        if not target_amount_raw:
+            return Response(
+                {"detail": "target_amount query parameter is required."},
+                status=400,
+            )
+
+        try:
+            target_amount = Decimal(target_amount_raw)
+        except (InvalidOperation, TypeError):
+            return Response(
+                {"detail": "target_amount must be a valid number."},
+                status=400,
+            )
+
         window = int(request.GET.get("window", 7))
         method = request.GET.get("method", "weighted")
-        scope_type = request.GET.get("scope_type", "overall")
-        region_id = _optional_int(request.GET.get("region_id"))
-        product_id = _optional_int(request.GET.get("product_id"))
-        salesperson_id = _optional_int(request.GET.get("salesperson_id"))
 
         data = get_forecast_vs_target(
+            target_amount=target_amount,
             window=window,
             method=method,
-            scope_type=scope_type,
-            region_id=region_id,
-            product_id=product_id,
-            salesperson_id=salesperson_id,
         )
-
-        status_code = 404 if "detail" in data else 200
-        return Response(data, status=status_code)
+        return Response(data)
