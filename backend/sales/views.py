@@ -4,11 +4,13 @@ from django.db.models import Avg, Count, Sum
 from django.db.models.functions import TruncDate
 from rest_framework import viewsets
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.permissions import IsAuthenticatedReadOnlyOrCompanyAdmin
+from core.permissions import (
+    IsAuthenticatedReadOnlyOrCompanyAdmin,
+    SalesTransactionPermission,
+)
 from .models import Customer, Product, Region, SalesPerson, SalesTransaction
 from .serializers import (
     CustomerSerializer,
@@ -47,7 +49,7 @@ class SalesPersonViewSet(viewsets.ModelViewSet):
 
 class SalesTransactionViewSet(viewsets.ModelViewSet):
     serializer_class = SalesTransactionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [SalesTransactionPermission]
 
     def get_queryset(self):
         queryset = SalesTransaction.objects.select_related(
@@ -56,6 +58,41 @@ class SalesTransactionViewSet(viewsets.ModelViewSet):
             "salesperson",
             "salesperson__region",
         ).all()
+
+        user = self.request.user
+        profile = getattr(user, "profile", None)
+
+        if not profile:
+            return queryset.none()
+
+        if profile.role == "company_admin":
+            pass
+
+        elif profile.role == "analyst":
+            pass
+
+        elif profile.role == "sales_manager":
+            sales_profile = getattr(user, "sales_profile", None)
+
+            if not sales_profile:
+                return queryset.none()
+
+            queryset = queryset.filter(
+                salesperson__region_id=sales_profile.region_id
+            )
+
+        elif profile.role == "salesperson":
+            sales_profile = getattr(user, "sales_profile", None)
+
+            if not sales_profile:
+                return queryset.none()
+
+            queryset = queryset.filter(
+                salesperson__user_id=user.id
+            )
+
+        else:
+            return queryset.none()
 
         queryset = filter_transaction_by_date(self.request, queryset)
 
