@@ -4,7 +4,7 @@
 
 The AI Sales Monitoring, Forecasting & Performance System is a web application for recording sales transactions, monitoring performance against targets, producing forecasts, evaluating forecast accuracy, and generating business alerts.
 
-This document describes the **current architecture observed in the repository** and the **target architectural direction** for subsequent sprints.
+This project is intentionally designed as a **single-company enterprise-style application** for a resume/portfolio. We will demonstrate strong authentication, role-based authorization, domain separation, data integrity, forecasting, testing, and CI without adding unnecessary multi-tenant SaaS complexity.
 
 ## 2. Current technology stack
 
@@ -49,8 +49,8 @@ This document describes the **current architecture observed in the repository** 
 ├──────────────────────────────┤
 │ core                         │
 │ sales                        │
-│ targets                      │
 │ forecasting                  │
+│ targets                      │
 │ alerts                       │
 └──────────────┬───────────────┘
                │ ORM
@@ -119,7 +119,7 @@ Forecast series
 ### Alerts
 
 ```text
-Active SalesTarget
+SalesTarget
        ↓
 Forecasting service
        ↓
@@ -132,7 +132,7 @@ Alert persistence
 
 ## 5. Current strengths
 
-1. Business domains have already been separated into Django applications.
+1. Business domains are already separated into Django applications.
 2. Forecasting logic is mostly isolated in a service module instead of being embedded directly in API views.
 3. Alert rules are separated into reusable service functions.
 4. ORM aggregation is used for dashboard calculations.
@@ -145,7 +145,7 @@ Alert persistence
 
 - Public registration currently performs demo-data initialization when the sales table is empty.
 - Transaction writes are available to any authenticated user rather than a clearly defined role model.
-- The reviewed domain model has no explicit company/tenant ownership boundary.
+- Authorization currently relies heavily on Django `is_staff`/`is_superuser` instead of application roles.
 - Query-string filters must never be treated as authorization boundaries.
 
 ### P1 — Data integrity
@@ -169,7 +169,7 @@ Alert persistence
 
 ## 7. Target architecture
 
-The target architecture should remain modular while adding explicit security and domain boundaries:
+The target architecture remains modular and single-company:
 
 ```text
                          ┌──────────────────────┐
@@ -184,7 +184,7 @@ The target architecture should remain modular while adding explicit security and
                ┌────────────────────┼────────────────────┐
                │                    │                    │
                ▼                    ▼                    ▼
-        Authorization          Validation          API contracts
+          Role checks          Validation          API contracts
                │                    │                    │
                └────────────────────┼────────────────────┘
                                     ▼
@@ -197,35 +197,64 @@ The target architecture should remain modular while adding explicit security and
                          │ Alerts               │
                          └──────────┬───────────┘
                                     │
-                  ┌─────────────────┼─────────────────┐
-                  ▼                 ▼                 ▼
-             PostgreSQL       Analytics/ML       Background jobs
-                                  layer             (when required)
+                    ┌───────────────┴──────────────┐
+                    ▼                              ▼
+               PostgreSQL                    Analytics/ML
 ```
 
-## 8. Target security model
+## 8. Role-based authorization model
 
-The application should move toward an explicit authorization model:
+The application uses a single-company role model:
 
 ```text
-Company / Tenant
-      │
-      ├── Admin
-      ├── Manager
-      ├── Salesperson
-      └── Viewer / Analyst
+Company
+  │
+  ├── Company Admin
+  ├── Sales Manager
+  ├── Salesperson
+  └── Analyst
 ```
 
-Access should be enforced at two levels:
+### Company Admin
 
-1. **Permission level** — whether the role may perform the action.
-2. **Queryset/service level** — which company/team/region/records the user may access.
+- Full access to company data and administration.
+- Manage users/roles.
+- Manage master data and sales records.
+- Manage targets and alert configuration.
 
-Filtering parameters such as `region`, `product`, or `salesperson` must only narrow an already-authorized queryset.
+### Sales Manager
 
-## 9. Target forecasting architecture
+- View sales and performance data within authorized operational scope.
+- Manage appropriate sales records and targets according to business rules.
+- Review forecasts and alerts.
 
-Forecasting should evolve from a single-baseline implementation into a model evaluation pipeline:
+### Salesperson
+
+- View their permitted sales activity.
+- Create sales activity where permitted.
+- Cannot modify unrelated users' data or administrative configuration.
+
+### Analyst
+
+- Read-only access to sales analytics, forecasts, targets, and alerts.
+- No destructive business-data operations.
+
+The exact permission matrix is defined in Sprint 1 implementation and tests.
+
+## 9. Authorization principles
+
+Authorization has two independent layers:
+
+1. **Action authorization** — whether a role may perform the operation.
+2. **Object/queryset authorization** — which records the role may access.
+
+Filtering parameters such as `region`, `product`, or `salesperson` may narrow an already-authorized queryset, but may never expand access.
+
+The backend is the security source of truth. React route guards exist only for user experience and must not be relied upon for security.
+
+## 10. Target forecasting architecture
+
+Forecasting should evolve from baseline methods into a model evaluation pipeline:
 
 ```text
 Sales Data
@@ -247,7 +276,7 @@ Backtesting / evaluation
    ├── RMSE
    └── Bias
    ↓
-Best model for scope / dataset
+Best model for the dataset/scope
    ↓
 Forecast
    ↓
@@ -256,7 +285,7 @@ Target comparison + alerts
 
 No advanced ML model should be introduced until the baseline data alignment and evaluation pipeline are trustworthy.
 
-## 10. Data ownership principles
+## 11. Data integrity principles
 
 The following should become invariants:
 
@@ -266,7 +295,7 @@ The following should become invariants:
 - API serializers expose explicit fields.
 - Historical transaction prices remain immutable snapshots of the transaction, even when product catalog pricing changes.
 
-## 11. CI/CD direction
+## 12. CI/CD direction
 
 ### Backend pipeline
 
@@ -294,7 +323,25 @@ Tests
 Production build
 ```
 
-## 12. Architectural decision rules for future work
+## 13. Resume-focused engineering goals
+
+The project should clearly demonstrate professional software-engineering capabilities without artificial complexity:
+
+- Django REST API architecture.
+- JWT authentication.
+- Role-based authorization.
+- ORM/query optimization.
+- Financial data integrity.
+- Service-layer business logic.
+- Time-series forecasting.
+- Forecast evaluation with measurable metrics.
+- Automated business alerts.
+- Automated tests.
+- GitHub Actions CI.
+- Git-based branching and pull-request workflow.
+- Production configuration awareness.
+
+## 14. Architectural decision rules
 
 1. Fix P0 security issues before adding new business features.
 2. Do not add advanced AI before the data/forecasting baseline is correct.
@@ -307,6 +354,6 @@ Production build
 9. Changes should be developed on branches and merged through pull requests.
 10. `main` should remain releasable.
 
-## 13. Sprint ownership
+## 15. Sprint ownership
 
-Sprint 0 establishes this document as the baseline. Sprint 1 will address authentication, authorization, registration behavior, and the data-ownership model before further feature expansion.
+Sprint 0 established the architecture baseline. Sprint 1 implements authentication, role-based authorization, secure registration, and permission tests. Later sprints will address data integrity, forecasting quality, alerts, and production readiness.
