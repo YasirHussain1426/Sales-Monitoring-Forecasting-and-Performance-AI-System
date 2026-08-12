@@ -2,6 +2,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
+from .models import UserProfile
+
 User = get_user_model()
 
 
@@ -23,9 +25,16 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data.pop("confirm_password")
+
         user = User.objects.create_user(
             username=validated_data["username"],
             email=validated_data.get("email", ""),
             password=validated_data["password"],
         )
+
+        UserProfile.objects.create(
+            user=user,
+            role=UserProfile.Role.ANALYST,
+        )
+
         return user
