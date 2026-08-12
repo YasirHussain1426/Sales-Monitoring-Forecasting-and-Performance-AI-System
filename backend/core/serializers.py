@@ -18,7 +18,6 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"confirm_password": "Passwords do not match."}
             )
-
         validate_password(attrs["password"])
         return attrs
 
@@ -29,4 +28,4 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data.get("email", ""),
             password=validated_data["password"],
         )
-        return user 
+        return user
