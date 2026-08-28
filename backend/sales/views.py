@@ -1,5 +1,5 @@
 from datetime import datetime
-
+from .services import get_authorized_sales_queryset
 from django.db.models import Avg, Count, Sum
 from django.db.models.functions import TruncDate
 from rest_framework import viewsets
@@ -52,6 +52,7 @@ class SalesTransactionViewSet(viewsets.ModelViewSet):
     permission_classes = [SalesTransactionPermission]
 
     def get_queryset(self):
+        queryset = get_authorized_sales_queryset(self.request.user)
         queryset = SalesTransaction.objects.select_related(
             "customer",
             "product",
@@ -116,7 +117,7 @@ class SalesDashboardSummaryView(APIView):
     permission_classes = [IsAuthenticatedReadOnlyOrCompanyAdmin]
 
     def get(self, request):
-        queryset = filter_transaction_by_date(request, SalesTransaction.objects.all())
+        queryset = filter_transaction_by_date(request, get_authorized_sales_queryset(request.user))
 
         summary = queryset.aggregate(
             total_revenue=Sum("total_amount"),
@@ -138,7 +139,7 @@ class SalesDashboardTrendView(APIView):
     permission_classes = [IsAuthenticatedReadOnlyOrCompanyAdmin]
 
     def get(self, request):
-        queryset = filter_transaction_by_date(request, SalesTransaction.objects.all())
+        queryset = filter_transaction_by_date(request, get_authorized_sales_queryset(request.user))
 
         trends = (
             queryset.annotate(day=TruncDate("transaction_date"))
@@ -161,7 +162,7 @@ class SalesByRegionView(APIView):
     permission_classes = [IsAuthenticatedReadOnlyOrCompanyAdmin]
 
     def get(self, request):
-        queryset = filter_transaction_by_date(request, SalesTransaction.objects.all())
+        queryset = filter_transaction_by_date(request, get_authorized_sales_queryset(request.user))
 
         region_data = (
             queryset.values("salesperson__region__name")
@@ -183,7 +184,7 @@ class TopProductsView(APIView):
     permission_classes = [IsAuthenticatedReadOnlyOrCompanyAdmin]
 
     def get(self, request):
-        queryset = filter_transaction_by_date(request, SalesTransaction.objects.all())
+        queryset = filter_transaction_by_date(request, get_authorized_sales_queryset(request.user))
 
         top_products = (
             queryset.values("product__name", "product__sku")

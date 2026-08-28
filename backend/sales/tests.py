@@ -643,3 +643,97 @@ class SalesTransactionPermissionTests(APITestCase):
 
         self.assertIn(north_transaction.id, returned_ids)
         self.assertIn(south_transaction.id, returned_ids)
+        
+    def test_salesperson_dashboard_summary_is_scoped_to_own_sales(self):
+        region = Region.objects.create(
+            name="Dashboard Region",
+            code="DASH-REGION",
+        )
+
+        salesperson_user = User.objects.create_user(
+            username="dashboard_salesperson",
+            password="Strong@123",
+        )
+
+        UserProfile.objects.create(
+            user=salesperson_user,
+            role=UserProfile.Role.SALESPERSON,
+        )
+
+        salesperson = SalesPerson.objects.create(
+            user=salesperson_user,
+            employee_code="EMP-DASH-01",
+            region=region,
+        )
+
+        other_user = User.objects.create_user(
+            username="dashboard_other",
+            password="Strong@123",
+        )
+
+        UserProfile.objects.create(
+            user=other_user,
+            role=UserProfile.Role.SALESPERSON,
+        )
+
+        other_salesperson = SalesPerson.objects.create(
+            user=other_user,
+            employee_code="EMP-DASH-02",
+            region=region,
+        )
+
+        customer = Customer.objects.create(
+            name="Dashboard Customer",
+            region=region,
+        )
+
+        product = Product.objects.create(
+            name="Dashboard Product",
+            sku="DASH-SKU",
+            category="Test",
+            unit_price=Decimal("100.00"),
+        )
+
+        SalesTransaction.objects.create(
+            transaction_date=timezone.localdate(),
+            customer=customer,
+            product=product,
+            salesperson=salesperson,
+            quantity=1,
+            unit_price=Decimal("100.00"),
+            discount_amount=Decimal("0.00"),
+            total_amount=Decimal("100.00"),
+        )
+
+        SalesTransaction.objects.create(
+            transaction_date=timezone.localdate(),
+            customer=customer,
+            product=product,
+            salesperson=other_salesperson,
+            quantity=1,
+            unit_price=Decimal("500.00"),
+            discount_amount=Decimal("0.00"),
+            total_amount=Decimal("500.00"),
+        )
+
+        self.client.force_authenticate(user=salesperson_user)
+
+        response = self.client.get(
+            reverse("sales-dashboard-summary")
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK,
+        )
+
+        self.assertEqual(
+            float(response.data["total_revenue"]),
+            100.0,
+        )
+
+        self.assertEqual(
+            response.data["total_transactions"],
+            1,
+        )
+        

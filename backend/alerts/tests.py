@@ -11,6 +11,7 @@ from alerts.models import Alert
 from sales.models import Customer, Product, Region, SalesPerson, SalesTransaction
 from targets.models import SalesTarget
 
+from core.models import UserProfile
 
 class AlertsAPITests(APITestCase):
     def setUp(self):
@@ -20,6 +21,12 @@ class AlertsAPITests(APITestCase):
             email="alert@example.com",
             password="testpass123",
         )
+        
+        UserProfile.objects.create(
+            user=self.user,
+            role=UserProfile.Role.COMPANY_ADMIN,
+        )
+        
         self.client.force_authenticate(user=self.user)
 
         self.region = Region.objects.create(name="North", code="NORTH")
