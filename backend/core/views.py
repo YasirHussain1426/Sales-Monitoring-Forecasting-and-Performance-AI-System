@@ -1,11 +1,9 @@
-from django.core.management import call_command
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from sales.models import SalesTransaction
 from .serializers import RegisterSerializer
 
 
@@ -18,6 +16,8 @@ class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        profile = getattr(request.user, "profile", None)
+
         return Response(
             {
                 "id": request.user.id,
@@ -25,6 +25,7 @@ class CurrentUserView(APIView):
                 "email": request.user.email,
                 "is_staff": request.user.is_staff,
                 "is_superuser": request.user.is_superuser,
+                "role": profile.role if profile else None,
             }
         )
 
@@ -37,23 +38,18 @@ class RegisterView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-        demo_seeded = False
-        if not SalesTransaction.objects.exists():
-            call_command("seed_demo_data")
-            demo_seeded = True
-
         refresh = RefreshToken.for_user(user)
 
         return Response(
             {
                 "message": "User registered successfully.",
-                "demo_seeded": demo_seeded,
                 "refresh": str(refresh),
                 "access": str(refresh.access_token),
                 "user": {
                     "id": user.id,
                     "username": user.username,
                     "email": user.email,
+                    "role": user.profile.role,
                 },
             },
             status=status.HTTP_201_CREATED,

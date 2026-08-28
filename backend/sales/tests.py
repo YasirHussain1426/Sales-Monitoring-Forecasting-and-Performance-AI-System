@@ -1,7 +1,6 @@
+from core.models import UserProfile
 from datetime import timedelta
 from decimal import Decimal
-from tkinter import Place
-
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
@@ -10,6 +9,7 @@ from rest_framework.test import APITestCase
 
 from .models import Customer, Product, Region, SalesPerson, SalesTransaction
 
+User = get_user_model()
 
 class SalesDashboardAPITests(APITestCase):
     def setUp(self):
@@ -19,6 +19,10 @@ class SalesDashboardAPITests(APITestCase):
             username="salesuser1",
             email="sales1@example.com",
             password="testpass123",
+        )
+        UserProfile.objects.create(
+        user=self.user,
+        role=UserProfile.Role.ANALYST,
         )
         self.user_two = user_model.objects.create_user(
             username="salesuser2",
@@ -254,8 +258,9 @@ class SalesDashboardAPITests(APITestCase):
         self.assertEqual(float(response.data[0]["total_sales"]), 400.0)
 
     def test_transactions_endpoint_filters_by_region_and_product(self):
+        
         today = timezone.localdate()
-
+        
         matching_transaction = self._create_transaction(
             transaction_date=today,
             customer=self.customer_one,
@@ -296,3 +301,439 @@ class SalesDashboardAPITests(APITestCase):
         self.assertEqual(response.data["results"][0]["id"], matching_transaction.id)
         self.assertEqual(response.data["results"][0]["region_name"], "North")
         self.assertEqual(response.data["results"][0]["product_name"], "Product A")
+        
+class SalesTransactionPermissionTests(APITestCase):
+    def create_user_with_role(self, username, role):
+        user = User.objects.create_user(
+            username=username,
+            password="Strong@123",
+        )
+
+        UserProfile.objects.create(
+            user=user,
+            role=role,
+        )
+
+        return user
+
+    def test_analyst_can_read_transactions(self):
+        user = self.create_user_with_role(
+            "analyst",
+            UserProfile.Role.ANALYST,
+        )
+
+        self.client.force_authenticate(user=user)
+
+        response = self.client.get(
+            reverse("transactions-list")
+        )
+
+        self.assertNotEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_analyst_cannot_create_transaction(self):
+        user = self.create_user_with_role(
+            "analyst",
+            UserProfile.Role.ANALYST,
+        )
+
+        self.client.force_authenticate(user=user)
+
+        response = self.client.post(
+            reverse("transactions-list"),
+            {},
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_salesperson_can_create_transaction(self):
+        user = self.create_user_with_role(
+            "salesperson",
+            UserProfile.Role.SALESPERSON,
+        )
+
+        self.client.force_authenticate(user=user)
+
+        response = self.client.post(
+            reverse("transactions-list"),
+            {},
+            format="json",
+        )
+
+        self.assertNotEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_sales_manager_can_create_transaction(self):
+        user = self.create_user_with_role(
+            "manager",
+            UserProfile.Role.SALES_MANAGER,
+        )
+
+        self.client.force_authenticate(user=user)
+
+        response = self.client.post(
+            reverse("transactions-list"),
+            {},
+            format="json",
+        )
+
+        self.assertNotEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_admin_can_create_transaction(self):
+        user = self.create_user_with_role(
+            "admin",
+            UserProfile.Role.COMPANY_ADMIN,
+        )
+
+        self.client.force_authenticate(user=user)
+
+        response = self.client.post(
+            reverse("transactions-list"),
+            {},
+            format="json",
+        )
+
+        self.assertNotEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+    
+    def test_salesperson_cannot_see_another_salespersons_transactions(self):
+        region = Region.objects.create(name="Test North", code="TEST-NORTH")
+
+        owner_user = User.objects.create_user(
+            username="owner",
+            password="Strong@123",
+        )
+        UserProfile.objects.create(
+            user=owner_user,
+            role=UserProfile.Role.SALESPERSON,
+        )
+        owner_salesperson = SalesPerson.objects.create(
+            user=owner_user,
+            employee_code="EMP-OWNER",
+            region=region,
+        )
+
+        other_user = User.objects.create_user(
+            username="other",
+            password="Strong@123",
+        )
+        UserProfile.objects.create(
+            user=other_user,
+            role=UserProfile.Role.SALESPERSON,
+        )
+        other_salesperson = SalesPerson.objects.create(
+            user=other_user,
+            employee_code="EMP-OTHER",
+            region=region,
+        )
+
+        customer = Customer.objects.create(
+            name="Test Customer",
+            email="test@example.com",
+            region=region,
+        )
+
+        product = Product.objects.create(
+            name="Test Product",
+            sku="TEST-SKU",
+            category="Test",
+            unit_price=Decimal("100.00"),
+        )
+
+        transaction = SalesTransaction.objects.create(
+            transaction_date=timezone.localdate(),
+            customer=customer,
+            product=product,
+            salesperson=other_salesperson,
+            quantity=1,
+            unit_price=Decimal("100.00"),
+            discount_amount=Decimal("0.00"),
+            total_amount=Decimal("100.00"),
+        )
+
+        self.client.force_authenticate(user=owner_user)
+
+        response = self.client.get(
+            reverse("transactions-list")
+        )
+
+        returned_ids = [
+            item["id"]
+            for item in response.data["results"]
+        ]
+
+        self.assertNotIn(transaction.id, returned_ids)
+
+
+    def test_sales_manager_cannot_see_other_region_transactions(self):
+        north = Region.objects.create(
+            name="Manager North",
+            code="MANAGER-NORTH",
+        )
+        south = Region.objects.create(
+            name="Manager South",
+            code="MANAGER-SOUTH",
+        )
+
+        manager_user = User.objects.create_user(
+            username="manager_scope",
+            password="Strong@123",
+        )
+        UserProfile.objects.create(
+            user=manager_user,
+            role=UserProfile.Role.SALES_MANAGER,
+        )
+        manager_salesperson = SalesPerson.objects.create(
+            user=manager_user,
+            employee_code="EMP-MANAGER",
+            region=north,
+        )
+
+        south_user = User.objects.create_user(
+            username="south_sales",
+            password="Strong@123",
+        )
+        UserProfile.objects.create(
+            user=south_user,
+            role=UserProfile.Role.SALESPERSON,
+        )
+        south_salesperson = SalesPerson.objects.create(
+            user=south_user,
+            employee_code="EMP-SOUTH",
+            region=south,
+        )
+
+        customer = Customer.objects.create(
+            name="South Customer",
+            region=south,
+        )
+
+        product = Product.objects.create(
+            name="South Product",
+            sku="SOUTH-SKU",
+            category="Test",
+            unit_price=Decimal("100.00"),
+        )
+
+        transaction = SalesTransaction.objects.create(
+            transaction_date=timezone.localdate(),
+            customer=customer,
+            product=product,
+            salesperson=south_salesperson,
+            quantity=1,
+            unit_price=Decimal("100.00"),
+            discount_amount=Decimal("0.00"),
+            total_amount=Decimal("100.00"),
+        )
+
+        self.client.force_authenticate(user=manager_user)
+
+        response = self.client.get(
+            reverse("transactions-list")
+        )
+
+        returned_ids = [
+            item["id"]
+            for item in response.data["results"]
+        ]
+
+        self.assertNotIn(transaction.id, returned_ids)
+
+
+    def test_company_admin_can_see_all_transactions(self):
+        north = Region.objects.create(
+            name="Admin North",
+            code="ADMIN-NORTH",
+        )
+        south = Region.objects.create(
+            name="Admin South",
+            code="ADMIN-SOUTH",
+        )
+
+        admin_user = User.objects.create_user(
+            username="company_admin",
+            password="Strong@123",
+        )
+        UserProfile.objects.create(
+            user=admin_user,
+            role=UserProfile.Role.COMPANY_ADMIN,
+        )
+
+        north_user = User.objects.create_user(
+            username="north_sales",
+            password="Strong@123",
+        )
+        north_salesperson = SalesPerson.objects.create(
+            user=north_user,
+            employee_code="EMP-ADMIN-NORTH",
+            region=north,
+        )
+
+        south_user = User.objects.create_user(
+            username="south_admin_test",
+            password="Strong@123",
+        )
+        south_salesperson = SalesPerson.objects.create(
+            user=south_user,
+            employee_code="EMP-ADMIN-SOUTH",
+            region=south,
+        )
+
+        customer_north = Customer.objects.create(
+            name="North Customer",
+            region=north,
+        )
+        customer_south = Customer.objects.create(
+            name="South Customer",
+            region=south,
+        )
+
+        product = Product.objects.create(
+            name="Admin Product",
+            sku="ADMIN-SKU",
+            category="Test",
+            unit_price=Decimal("100.00"),
+        )
+
+        north_transaction = SalesTransaction.objects.create(
+            transaction_date=timezone.localdate(),
+            customer=customer_north,
+            product=product,
+            salesperson=north_salesperson,
+            quantity=1,
+            unit_price=Decimal("100.00"),
+            discount_amount=Decimal("0.00"),
+            total_amount=Decimal("100.00"),
+        )
+
+        south_transaction = SalesTransaction.objects.create(
+            transaction_date=timezone.localdate(),
+            customer=customer_south,
+            product=product,
+            salesperson=south_salesperson,
+            quantity=1,
+            unit_price=Decimal("100.00"),
+            discount_amount=Decimal("0.00"),
+            total_amount=Decimal("100.00"),
+        )
+
+        self.client.force_authenticate(user=admin_user)
+
+        response = self.client.get(
+            reverse("transactions-list")
+        )
+
+        returned_ids = [
+            item["id"]
+            for item in response.data["results"]
+        ]
+
+        self.assertIn(north_transaction.id, returned_ids)
+        self.assertIn(south_transaction.id, returned_ids)
+        
+    def test_salesperson_dashboard_summary_is_scoped_to_own_sales(self):
+        region = Region.objects.create(
+            name="Dashboard Region",
+            code="DASH-REGION",
+        )
+
+        salesperson_user = User.objects.create_user(
+            username="dashboard_salesperson",
+            password="Strong@123",
+        )
+
+        UserProfile.objects.create(
+            user=salesperson_user,
+            role=UserProfile.Role.SALESPERSON,
+        )
+
+        salesperson = SalesPerson.objects.create(
+            user=salesperson_user,
+            employee_code="EMP-DASH-01",
+            region=region,
+        )
+
+        other_user = User.objects.create_user(
+            username="dashboard_other",
+            password="Strong@123",
+        )
+
+        UserProfile.objects.create(
+            user=other_user,
+            role=UserProfile.Role.SALESPERSON,
+        )
+
+        other_salesperson = SalesPerson.objects.create(
+            user=other_user,
+            employee_code="EMP-DASH-02",
+            region=region,
+        )
+
+        customer = Customer.objects.create(
+            name="Dashboard Customer",
+            region=region,
+        )
+
+        product = Product.objects.create(
+            name="Dashboard Product",
+            sku="DASH-SKU",
+            category="Test",
+            unit_price=Decimal("100.00"),
+        )
+
+        SalesTransaction.objects.create(
+            transaction_date=timezone.localdate(),
+            customer=customer,
+            product=product,
+            salesperson=salesperson,
+            quantity=1,
+            unit_price=Decimal("100.00"),
+            discount_amount=Decimal("0.00"),
+            total_amount=Decimal("100.00"),
+        )
+
+        SalesTransaction.objects.create(
+            transaction_date=timezone.localdate(),
+            customer=customer,
+            product=product,
+            salesperson=other_salesperson,
+            quantity=1,
+            unit_price=Decimal("500.00"),
+            discount_amount=Decimal("0.00"),
+            total_amount=Decimal("500.00"),
+        )
+
+        self.client.force_authenticate(user=salesperson_user)
+
+        response = self.client.get(
+            reverse("sales-dashboard-summary")
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK,
+        )
+
+        self.assertEqual(
+            float(response.data["total_revenue"]),
+            100.0,
+        )
+
+        self.assertEqual(
+            response.data["total_transactions"],
+            1,
+        )
+        

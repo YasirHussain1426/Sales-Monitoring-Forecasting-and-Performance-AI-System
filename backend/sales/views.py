@@ -1,14 +1,16 @@
 from datetime import datetime
-
+from .services import get_authorized_sales_queryset
 from django.db.models import Avg, Count, Sum
 from django.db.models.functions import TruncDate
 from rest_framework import viewsets
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.permissions import IsAuthenticatedReadOnlyOrCompanyAdmin
+from core.permissions import (
+    IsAuthenticatedReadOnlyOrCompanyAdmin,
+    SalesTransactionPermission,
+)
 from .models import Customer, Product, Region, SalesPerson, SalesTransaction
 from .serializers import (
     CustomerSerializer,
@@ -47,15 +49,51 @@ class SalesPersonViewSet(viewsets.ModelViewSet):
 
 class SalesTransactionViewSet(viewsets.ModelViewSet):
     serializer_class = SalesTransactionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [SalesTransactionPermission]
 
     def get_queryset(self):
+        queryset = get_authorized_sales_queryset(self.request.user)
         queryset = SalesTransaction.objects.select_related(
             "customer",
             "product",
             "salesperson",
             "salesperson__region",
         ).all()
+
+        user = self.request.user
+        profile = getattr(user, "profile", None)
+
+        if not profile:
+            return queryset.none()
+
+        if profile.role == "company_admin":
+            pass
+
+        elif profile.role == "analyst":
+            pass
+
+        elif profile.role == "sales_manager":
+            sales_profile = getattr(user, "sales_profile", None)
+
+            if not sales_profile:
+                return queryset.none()
+
+            queryset = queryset.filter(
+                salesperson__region_id=sales_profile.region_id
+            )
+
+        elif profile.role == "salesperson":
+            sales_profile = getattr(user, "sales_profile", None)
+
+            if not sales_profile:
+                return queryset.none()
+
+            queryset = queryset.filter(
+                salesperson__user_id=user.id
+            )
+
+        else:
+            return queryset.none()
 
         queryset = filter_transaction_by_date(self.request, queryset)
 
@@ -79,7 +117,7 @@ class SalesDashboardSummaryView(APIView):
     permission_classes = [IsAuthenticatedReadOnlyOrCompanyAdmin]
 
     def get(self, request):
-        queryset = filter_transaction_by_date(request, SalesTransaction.objects.all())
+        queryset = filter_transaction_by_date(request, get_authorized_sales_queryset(request.user))
 
         summary = queryset.aggregate(
             total_revenue=Sum("total_amount"),
@@ -101,7 +139,7 @@ class SalesDashboardTrendView(APIView):
     permission_classes = [IsAuthenticatedReadOnlyOrCompanyAdmin]
 
     def get(self, request):
-        queryset = filter_transaction_by_date(request, SalesTransaction.objects.all())
+        queryset = filter_transaction_by_date(request, get_authorized_sales_queryset(request.user))
 
         trends = (
             queryset.annotate(day=TruncDate("transaction_date"))
@@ -124,7 +162,7 @@ class SalesByRegionView(APIView):
     permission_classes = [IsAuthenticatedReadOnlyOrCompanyAdmin]
 
     def get(self, request):
-        queryset = filter_transaction_by_date(request, SalesTransaction.objects.all())
+        queryset = filter_transaction_by_date(request, get_authorized_sales_queryset(request.user))
 
         region_data = (
             queryset.values("salesperson__region__name")
@@ -146,7 +184,7 @@ class TopProductsView(APIView):
     permission_classes = [IsAuthenticatedReadOnlyOrCompanyAdmin]
 
     def get(self, request):
-        queryset = filter_transaction_by_date(request, SalesTransaction.objects.all())
+        queryset = filter_transaction_by_date(request, get_authorized_sales_queryset(request.user))
 
         top_products = (
             queryset.values("product__name", "product__sku")
