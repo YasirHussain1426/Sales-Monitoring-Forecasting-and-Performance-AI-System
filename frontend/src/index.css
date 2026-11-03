@@ -405,3 +405,144 @@ button:hover {
 .signup-heading .page-subtitle {
   margin-bottom: 0;
 }
+
+/* Header layout and navigation spacing */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 22px 26px;
+}
+
+.header-brand {
+  flex: 1 1 280px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.header-actions .action-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+}
+
+/* Consistent separation between page sections and cards */
+.page-intro {
+  margin: 24px 0 18px;
+}
+
+.panel,
+.hero-card,
+.info-card {
+  padding: 24px;
+}
+
+.form-stack {
+  display: grid;
+  gap: 18px;
+}
+
+/* Sales entry form layout */
+.sales-entry-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 16px;
+}
+
+.sales-entry-form .field {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sales-entry-form .text-input,
+.sales-entry-form select,
+.sales-entry-form textarea {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Clear, consistent button colors */
+.button-primary,
+.primary-button {
+  color: #fff;
+  background: linear-gradient(135deg, #3478f6, #1d4ed8);
+  border: 0;
+}
+
+.button-primary:hover,
+.primary-button:hover {
+  filter: brightness(1.08);
+}
+
+.action-green {
+  background: #119b52;
+}
+
+.action-blue {
+  background: #2458dc;
+}
+
+.action-violet {
+  background: #7138df;
+}
+
+.action-red {
+  background: #d92f35;
+}
+
+.action-ghost {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Responsive layout */
+@media (max-width: 850px) {
+  .dashboard-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .header-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .page-shell {
+    padding: 14px;
+  }
+
+  .header-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .header-actions .action-link {
+    width: 100%;
+    padding: 0 10px;
+  }
+
+  .sales-entry-form {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .panel,
+  .hero-card,
+  .info-card {
+    padding: 18px;
+  }
+}
