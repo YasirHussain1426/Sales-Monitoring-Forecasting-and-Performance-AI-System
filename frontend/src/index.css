@@ -368,6 +368,7 @@ button:hover {
 }
 
 .signup-form .button {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
   display: block;
   width: 100%;
 }
@@ -394,4 +395,13 @@ button:hover {
   .signup-card {
     padding: 22px 18px;
   }
+}
+
+.signup-heading {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.signup-heading .page-subtitle {
+  margin-bottom: 0;
 }

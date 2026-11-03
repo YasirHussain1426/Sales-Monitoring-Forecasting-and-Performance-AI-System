@@ -60,76 +60,84 @@ function SignupPage() {
   };
 
   return (
-    <div className="auth-shell">
-      <div className="glass-card auth-card signup-card">
-        <p className="eyebrow">Create account</p>
-        <h1 className="page-title">Join Sales AI</h1>
-        <p className="page-subtitle">Create a free account to test the app.</p>
+    <div className="page-shell auth-shell">
+      <div className="glass-card auth-card fade-up">
+        <div className="signup-heading">
+          <h1 className="page-title">Create Account</h1>
+          <p className="page-subtitle">Create a free account to test the app.</p>
+        </div>
 
-        <form className="form-stack signup-form" onSubmit={handleSignup}>
-          <label className="field">
-            <span className="field-label">Username</span>
+        <form onSubmit={handleSignup} className="auth-form">
+          <div className="auth-field">
+            <label htmlFor="signup-username" className="auth-label">Username</label>
             <input
-              className="text-input"
+              id="signup-username"
               name="username"
               type="text"
+              placeholder="Choose a username"
               value={formData.username}
               onChange={handleChange}
               required
             />
-          </label>
+          </div>
 
-          <label className="field">
-            <span className="field-label">Email</span>
+          <div className="auth-field">
+            <label htmlFor="signup-email" className="auth-label">Email</label>
             <input
-              className="text-input"
+              id="signup-email"
               name="email"
               type="email"
+              placeholder="Enter your email"
               value={formData.email}
               onChange={handleChange}
               required
             />
-          </label>
+          </div>
 
-          <label className="field">
-            <span className="field-label">Password</span>
+          <div className="auth-field">
+            <label htmlFor="signup-password" className="auth-label">Password</label>
             <input
-              className="text-input"
+              id="signup-password"
               name="password"
               type="password"
+              placeholder="Create a strong password"
               value={formData.password}
               onChange={handleChange}
               minLength={8}
               pattern="^(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$"
-              title="Password must be at least 8 characters long and include one uppercase letter, one number, and one special character."
+              title="Use at least 8 characters, including an uppercase letter, a number, and a special character."
               required
             />
             <span className="field-hint">
-              Password must be 8+ characters with 1 uppercase letter, numbers, and 1 special character.
+              8+ characters, with an uppercase letter, number, and special character.
             </span>
-          </label>
+          </div>
 
-          <label className="field">
-            <span className="field-label">Confirm Password</span>
+          <div className="auth-field">
+            <label htmlFor="signup-confirm-password" className="auth-label">
+              Confirm Password
+            </label>
             <input
-              className="text-input"
+              id="signup-confirm-password"
               name="confirm_password"
               type="password"
+              placeholder="Re-enter your password"
               value={formData.confirm_password}
               onChange={handleChange}
               required
             />
-          </label>
+          </div>
 
-          {error && <div className="status-banner status-error">{error}</div>}
+          {error && <div className="auth-error">{error}</div>}
 
-          <button className="button button-primary" type="submit" disabled={submitting}>
-            {submitting ? "Creating account..." : "Sign up"}
+          <button type="submit" disabled={submitting} className="primary-button">
+            {submitting ? "Creating account..." : "Sign Up"}
           </button>
         </form>
 
         <p className="auth-footer">
-          Already have an account? <Link to="/login">Login</Link>
+          Already have an account?{" "}
+          <Link to="/login" className="auth-link">Sign in</Link>
         </p>
       </div>
     </div>
