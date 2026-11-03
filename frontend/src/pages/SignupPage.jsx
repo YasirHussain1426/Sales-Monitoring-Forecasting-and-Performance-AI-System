@@ -61,12 +61,12 @@ function SignupPage() {
 
   return (
     <div className="auth-shell">
-      <div className="glass-card auth-card">
+      <div className="glass-card auth-card signup-card">
         <p className="eyebrow">Create account</p>
         <h1 className="page-title">Join Sales AI</h1>
         <p className="page-subtitle">Create a free account to test the app.</p>
 
-        <form className="form-stack" onSubmit={handleSignup}>
+        <form className="form-stack signup-form" onSubmit={handleSignup}>
           <label className="field">
             <span className="field-label">Username</span>
             <input
@@ -100,7 +100,7 @@ function SignupPage() {
               value={formData.password}
               onChange={handleChange}
               minLength={8}
-              pattern="^(?=.*[A-Z])(?=.*\\d)(?=.*[^\\w\\s]).{8,}$"
+              pattern="^(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$"
               title="Password must be at least 8 characters long and include one uppercase letter, one number, and one special character."
               required
             />

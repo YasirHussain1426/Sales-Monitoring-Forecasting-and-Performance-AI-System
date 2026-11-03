@@ -333,3 +333,65 @@ button {
 button:hover {
   filter: brightness(1.1);
 }
+
+.signup-card {
+  width: min(100%, 460px);
+  margin: auto;
+}
+
+.signup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.signup-form .field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+  min-width: 0;
+}
+
+.signup-form .field-label,
+.signup-form .field-hint {
+  display: block;
+  width: 100%;
+}
+
+.signup-form .text-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+}
+
+.signup-form .button {
+  display: block;
+  width: 100%;
+}
+
+.signup-card > .eyebrow,
+.signup-card > .page-title,
+.signup-card > .page-subtitle,
+.signup-card .auth-footer {
+  text-align: center;
+}
+
+.signup-card > .page-subtitle {
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.signup-form .field-hint {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 520px) {
+  .signup-card {
+    padding: 22px 18px;
+  }
+}

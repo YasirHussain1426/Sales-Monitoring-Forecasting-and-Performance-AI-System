@@ -1,5 +1,4 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import AdminRoute from "./components/AdminRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AlertsPage from "./pages/AlertsPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -27,9 +26,7 @@ function App() {
           path="/data-entry"
           element={
             <ProtectedRoute>
-              <AdminRoute>
-                <DataEntryPage />
-              </AdminRoute>
+              <DataEntryPage />
             </ProtectedRoute>
           }
         />
@@ -37,9 +34,7 @@ function App() {
           path="/forecast-comparison"
           element={
             <ProtectedRoute>
-              <AdminRoute>
-                <ForecastComparisonPage />
-              </AdminRoute>
+              <ForecastComparisonPage />
             </ProtectedRoute>
           }
         />
@@ -47,9 +42,7 @@ function App() {
           path="/forecast-actual"
           element={
             <ProtectedRoute>
-              <AdminRoute>
-                <ForecastActualPage />
-              </AdminRoute>
+              <ForecastActualPage />
             </ProtectedRoute>
           }
         />
@@ -57,9 +50,7 @@ function App() {
           path="/alerts"
           element={
             <ProtectedRoute>
-              <AdminRoute>
-                <AlertsPage />
-              </AdminRoute>
+              <AlertsPage />
             </ProtectedRoute>
           }
         />
